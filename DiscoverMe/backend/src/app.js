@@ -4,9 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const cookieParser = require('cookie-parser');
 
-const authRoutes = require('./routes/auth.routes');
 const placesRoutes = require('./routes/places.routes');
 const aiRoutes = require('./routes/ai.routes');
 const { notFound, globalErrorHandler } = require('./middleware/error.middleware');
@@ -24,7 +22,6 @@ const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:3000')
 app.use(
   cors({
     origin: (origin, cb) => {
-      // Allow requests with no origin (mobile apps, Postman, etc.)
       if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
         return cb(null, true);
       }
@@ -37,7 +34,6 @@ app.use(
 // ─── Parsing ──────────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-app.use(cookieParser());
 
 // ─── Logging ─────────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
@@ -54,7 +50,6 @@ app.get('/health', (_req, res) => {
 });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
-app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/places', placesRoutes);
 app.use('/api/ai', aiRoutes);
 
