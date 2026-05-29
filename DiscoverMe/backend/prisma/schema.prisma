@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Core user account
+// ─────────────────────────────────────────────
+model User {
+  id                   String    @id @default(cuid())
+  username             String    @unique @db.VarChar(30)
+  email                String    @unique @db.VarChar(255)
+  password             String
+
+  displayName          String?   @db.VarChar(60)
+  avatar               String?
+  role                 Role      @default(user)
+
+  // account state
+  isActive             Boolean   @default(true)
+  emailVerified        Boolean   @default(false)
+
+  // brute-force protection
+  failedLoginAttempts  Int       @default(0)
+  lockedUntil          DateTime?
+
+  // app data
+  favorites            String[]
+
+  // timestamps
+  lastLoginAt          DateTime?
+  passwordChangedAt    DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // relations
+  refreshTokens        RefreshToken[]
+  emailVerifications   EmailVerification[]
+  passwordResets       PasswordReset[]
+
+  @@index([email])
+  @@index([username])
+}
+
+// ─────────────────────────────────────────────
+// Refresh tokens — one row per device / session
+// Stored as bcrypt hash so a leaked DB doesn't
+// let an attacker forge sessions.
+// ─────────────────────────────────────────────
+model RefreshToken {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique          // bcrypt hash of the raw token
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt   DateTime
+  isRevoked   Boolean   @default(false)
+  revokedAt   DateTime?
+
+  // optional device fingerprint
+  ipAddress   String?   @db.VarChar(45) // IPv6 max length
+  userAgent   String?   @db.VarChar(512)
+
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+// ─────────────────────────────────────────────
+// Email verification
+// ─────────────────────────────────────────────
+model EmailVerification {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique            // SHA-256 hash of the raw token
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────
+// Password reset
+// ─────────────────────────────────────────────
+model PasswordReset {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique            // SHA-256 hash of the raw token
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+enum Role {
+  user
+  admin
+}
